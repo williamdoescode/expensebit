@@ -5,7 +5,18 @@ import { getRowTotal } from "../utils/calculations";
 
 const ExpenseRow = forwardRef(function ExpenseRow({ expense, onChange, onDelete }, ref) {
   return (
-    <div className="expense-row" role="row">
+    <div className={`expense-row ${expense.checked ? "expense-complete" : ""}`} role="row">
+      <div className="expense-cell completion" role="cell" data-label="Done">
+        <label className="checkbox-control">
+          <input
+            type="checkbox"
+            checked={expense.checked}
+            onChange={(event) => onChange({ ...expense, checked: event.target.checked })}
+          />
+          <span className="checkbox-visual" aria-hidden="true" />
+          <span className="sr-only">Mark {expense.name || "expense"} as completed</span>
+        </label>
+      </div>
       <div className="expense-cell expense-name" role="cell" data-label="Expense">
         <label className="sr-only" htmlFor={`name-${expense.id}`}>Expense name</label>
         <input
@@ -58,7 +69,7 @@ const ExpenseRow = forwardRef(function ExpenseRow({ expense, onChange, onDelete 
   );
 });
 
-export function ExpenseTable({ expenses, onAdd, onUpdate, onDelete, onClear, newRowRef, atLimit }) {
+export function ExpenseTable({ expenses, onAdd, onUpdate, onDelete, onResetChecked, newRowRef, atLimit }) {
   return (
     <section className="expenses-section" aria-labelledby="expenses-heading">
       <div className="expenses-heading-row">
@@ -66,7 +77,11 @@ export function ExpenseTable({ expenses, onAdd, onUpdate, onDelete, onClear, new
           <span className="eyebrow">Outgoings</span>
           <h2 id="expenses-heading">Expenses</h2>
         </div>
-        {expenses.length > 0 && <button className="text-button" type="button" onClick={onClear}>Clear all</button>}
+        {expenses.length > 0 && (
+          <div className="expense-list-actions">
+            <button className="text-button reset-button" type="button" onClick={onResetChecked} disabled={!expenses.some((expense) => expense.checked)}>Reset checks</button>
+          </div>
+        )}
       </div>
 
       {expenses.length === 0 ? (
@@ -78,6 +93,7 @@ export function ExpenseTable({ expenses, onAdd, onUpdate, onDelete, onClear, new
       ) : (
         <div className="expense-table" role="table" aria-label="Monthly expenses">
           <div className="expense-header" role="row">
+            <span role="columnheader">Done</span>
             <span role="columnheader">Expense</span><span role="columnheader">Quantity</span>
             <span role="columnheader">Unit cost</span><span role="columnheader">Total</span>
             <span role="columnheader" className="sr-only">Actions</span>
@@ -95,7 +111,7 @@ export function ExpenseTable({ expenses, onAdd, onUpdate, onDelete, onClear, new
       )}
 
       <button className="add-expense-button" type="button" onClick={onAdd} disabled={atLimit}>
-        <span aria-hidden="true">+</span> {atLimit ? "100 expense limit reached" : "Add expense"}
+        <span aria-hidden="true">+</span> {atLimit ? "20 expense limit reached" : "Add expense"}
       </button>
     </section>
   );

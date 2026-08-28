@@ -3,8 +3,10 @@ import {
   MAX_MONEY_CENTAVOS,
   MAX_NAME_LENGTH,
   MAX_QUANTITY,
+  SUPPORTED_TRACKER_VERSIONS,
   TRACKER_VERSION,
 } from "../constants/tracker";
+import { isValidMonth } from "./month";
 
 function validMoney(value, allowEmpty = true) {
   if (allowEmpty && value === null) return true;
@@ -15,15 +17,34 @@ function validId(value) {
   return typeof value === "string" && /^[a-zA-Z0-9_-]{1,64}$/.test(value);
 }
 
+function validSignedMoney(value) {
+  return Number.isSafeInteger(value) && Math.abs(value) <= MAX_MONEY_CENTAVOS;
+}
+
 export function validateTrackerState(candidate) {
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
     throw new Error("Tracker data is not an object.");
   }
-  if (candidate.version !== TRACKER_VERSION) {
+  if (!SUPPORTED_TRACKER_VERSIONS.includes(candidate.version)) {
     throw new Error("This tracker version is not supported.");
   }
   if (!validMoney(candidate.monthlyIncome) || !validMoney(candidate.targetSavings)) {
     throw new Error("Tracker totals contain invalid values.");
+  }
+  const currentMonth = candidate.currentMonth ?? "";
+  const monthLocked = candidate.monthLocked ?? false;
+  const previousMonthBalance = candidate.previousMonthBalance ?? 0;
+  const accumulatedOverallBalance = candidate.accumulatedOverallBalance ?? 0;
+  const accumulatedSavings = candidate.accumulatedSavings ?? 0;
+  if (!isValidMonth(currentMonth)) throw new Error("The tracker month is invalid.");
+  if (typeof monthLocked !== "boolean" || (monthLocked && !currentMonth)) {
+    throw new Error("The tracker month lock is invalid.");
+  }
+  if (!validSignedMoney(previousMonthBalance) || !validSignedMoney(accumulatedSavings)) {
+    throw new Error("Tracker carry-over values are invalid.");
+  }
+  if (!validMoney(accumulatedOverallBalance, false)) {
+    throw new Error("The accumulated overall balance is invalid.");
   }
   if (!Array.isArray(candidate.expenses) || candidate.expenses.length > MAX_EXPENSES) {
     throw new Error("Tracker contains too many expense rows.");
@@ -46,13 +67,27 @@ export function validateTrackerState(candidate) {
     }
     if (!validMoney(expense.unitCost)) throw new Error("An expense cost is invalid.");
     ids.add(expense.id);
-    return { id: expense.id, name, quantity: expense.quantity, unitCost: expense.unitCost };
+    if (expense.checked !== undefined && typeof expense.checked !== "boolean") {
+      throw new Error("An expense completion status is invalid.");
+    }
+    return {
+      id: expense.id,
+      name,
+      quantity: expense.quantity,
+      unitCost: expense.unitCost,
+      checked: expense.checked ?? false,
+    };
   });
 
   return {
     version: TRACKER_VERSION,
+    currentMonth,
+    monthLocked,
     monthlyIncome: candidate.monthlyIncome,
     targetSavings: candidate.targetSavings,
+    previousMonthBalance,
+    accumulatedOverallBalance,
+    accumulatedSavings,
     expenses,
   };
 }

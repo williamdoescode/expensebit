@@ -4,16 +4,25 @@ import { FinancialInputs } from "./components/FinancialInputs";
 import { ExpenseTable } from "./components/ExpenseTable";
 import { FinancialSummary } from "./components/FinancialSummary";
 import { ConfirmDialog } from "./components/ConfirmDialog";
-import { LARGE_LINK_LENGTH, MAX_EXPENSES, TRACKER_VERSION } from "./constants/tracker";
+import { SaveLinkPanel } from "./components/SaveLinkPanel";
+import { LARGE_LINK_LENGTH, MAX_EXPENSES } from "./constants/tracker";
 import { useUrlTrackerState } from "./hooks/useUrlTrackerState";
 import { calculateTrackerTotals } from "./utils/calculations";
+import { rollTrackerToNextMonth } from "./utils/monthlyRollover";
+import { transferBalance } from "./utils/balanceTransfer";
 
 function createExpense() {
-  return { id: crypto.randomUUID(), name: "", quantity: 1, unitCost: null };
+  return { id: crypto.randomUUID(), name: "", quantity: 1, unitCost: null, checked: false };
 }
 
 function hasTrackerData(tracker) {
-  return tracker.monthlyIncome !== null || tracker.targetSavings !== null || tracker.expenses.length > 0;
+  return tracker.currentMonth !== "" ||
+    tracker.monthlyIncome !== null ||
+    tracker.targetSavings !== null ||
+    tracker.previousMonthBalance !== 0 ||
+    tracker.accumulatedOverallBalance !== 0 ||
+    tracker.accumulatedSavings !== 0 ||
+    tracker.expenses.length > 0;
 }
 
 async function copyText(text) {
@@ -69,7 +78,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Header onCopy={copyLink} onNew={requestNewTracker} copyStatus={copyStatus} />
+      <Header onSave={copyLink} onNew={requestNewTracker} copyStatus={copyStatus} />
       <main>
         {decodeError && (
           <div className="error-banner" role="alert">
@@ -81,34 +90,47 @@ export default function App() {
           <div className="notice-banner" role="status">This tracker creates a long link. Some messaging apps may shorten it, so check the full link after sharing.</div>
         )}
 
-        <FinancialInputs tracker={tracker} onChange={setTracker} />
+        <FinancialInputs
+          tracker={tracker}
+          totals={totals}
+          onChange={setTracker}
+          onTransfer={(direction, amount) => setTracker(transferBalance(tracker, totals, direction, amount))}
+        />
         <div className="workspace-grid">
           <ExpenseTable
             expenses={tracker.expenses}
             onAdd={addExpense}
             onUpdate={updateExpense}
             onDelete={(id) => setTracker({ ...tracker, expenses: tracker.expenses.filter((expense) => expense.id !== id) })}
-            onClear={() => setDialogAction("clear")}
+            onResetChecked={() => setTracker({
+              ...tracker,
+              expenses: tracker.expenses.map((expense) => ({ ...expense, checked: false })),
+            })}
             newRowRef={newRowRef}
             atLimit={tracker.expenses.length >= MAX_EXPENSES}
           />
-          <FinancialSummary totals={totals} />
+          <div className="summary-column">
+            <FinancialSummary tracker={tracker} totals={totals} onNextMonth={() => setDialogAction("next")} />
+            <SaveLinkPanel onSave={copyLink} copyStatus={copyStatus} />
+          </div>
         </div>
       </main>
       <footer>
-        <p><strong>The link is the save file.</strong> ExpenseBit stores nothing on a server or this device.</p>
+        <p><strong>The link is the save file.</strong> Xpensed stores nothing on a server or this device.</p>
         <p>Anyone with the full link can view its financial information.</p>
       </footer>
 
       <ConfirmDialog
         open={Boolean(dialogAction)}
-        title={dialogAction === "new" ? "Start a new tracker?" : "Clear every expense?"}
-        message={dialogAction === "new" ? "Your current figures will be removed from this page and its URL." : "This removes all expense rows. Your income and savings target will stay."}
-        confirmLabel={dialogAction === "new" ? "Start new tracker" : "Clear expenses"}
+        title={dialogAction === "next" ? "Proceed to the next month?" : "Start a new tracker?"}
+        message={dialogAction === "next"
+          ? "This will finalize the current balances, advance the month, preserve every expense row, and reset all checks. The Date can no longer be modified"
+          : "Your current figures will be removed from this page and its URL."}
+        confirmLabel={dialogAction === "next" ? "Proceed to next month" : "Start new tracker"}
         onCancel={() => setDialogAction("")}
         onConfirm={() => {
-          if (dialogAction === "new") resetTracker();
-          else setTracker({ ...tracker, version: TRACKER_VERSION, expenses: [] });
+          if (dialogAction === "next") setTracker(rollTrackerToNextMonth(tracker));
+          else resetTracker();
           setDialogAction("");
         }}
       />
