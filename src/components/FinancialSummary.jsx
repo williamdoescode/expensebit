@@ -10,7 +10,7 @@ export function FinancialSummary({ tracker, totals, onNextMonth }) {
       </div>
       <dl className="summary-list">
         <div><dt>Monthly income</dt><dd><AnimatedCurrency value={totals.monthlyIncome} /></dd></div>
-        <div><dt>Target savings</dt><dd><AnimatedCurrency value={totals.targetSavings} /></dd></div>
+        <div><dt>Monthly Savings</dt><dd><AnimatedCurrency value={totals.targetSavings} /></dd></div>
         <div className="summary-subtotal"><dt>Available budget</dt><dd><AnimatedCurrency value={totals.availableBudget} /></dd></div>
         <div><dt>Ideal expenses</dt><dd><AnimatedCurrency value={totals.idealExpenses} /></dd></div>
         <div><dt>Actual expenses</dt><dd><AnimatedCurrency value={totals.actualExpenses} /></dd></div>

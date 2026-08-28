@@ -102,7 +102,7 @@ export function FinancialInputs({ tracker, totals, onChange, onTransfer }) {
         />
         <MoneyInput
           id="target-savings"
-          label="Target savings"
+          label="Monthly Savings"
           value={tracker.targetSavings}
           hint="The amount you plan to set aside"
           onChange={(targetSavings) => onChange({ ...tracker, targetSavings })}

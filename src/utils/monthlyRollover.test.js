@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { rollTrackerToNextMonth } from "./monthlyRollover";
 
 describe("monthly rollover", () => {
-  it("carries balances, adds target savings, advances the month, and resets checks", () => {
+  it("carries balances, adds Monthly Savings, advances the month, and resets checks", () => {
     const tracker = {
       version: 5,
       currentMonth: "2026-12",
